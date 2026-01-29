@@ -5,16 +5,20 @@ const adminSchema = new mongoose.Schema({
   username: {
     type: String,
     required: true,
-    unique: true
+    unique: true,
+    trim: true
   },
   password: {
     type: String,
     required: true
+    // Note: If you add 'select: false' here for security, 
+    // you must use .select('+password') in the login route.
   },
   email: {
     type: String,
     required: true,
-    unique: true
+    unique: true,
+    lowercase: true
   },
   role: {
     type: String,
@@ -29,11 +33,16 @@ const adminSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Hash password before saving
-adminSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
-  this.password = await bcrypt.hash(this.password, 10);
-  next();
+// FIX: Removed 'next' parameter to prevent "next is not a function" error
+adminSchema.pre('save', async function() {
+  if (!this.isModified('password')) return;
+  
+  try {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+  } catch (error) {
+    throw new Error(error);
+  }
 });
 
 // Compare password method
